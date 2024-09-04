@@ -1,13 +1,13 @@
 # Todo
 
 ## Models
-- actually finish implementing
+- add rbac -- mostly done
 
 ## Auth
 - add self serve project API Key creation endpoints
 
 ## Project endpoints (/chat, /models)
-Not Started
+Not Started, auth in place
 
 ## Chat Endpoints
 Not Started
@@ -18,4 +18,6 @@ Handle in Next.js App
 
 ## Admin Frontend
 Not Started
+
+
 

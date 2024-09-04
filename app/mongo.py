@@ -77,7 +77,7 @@ class DatabaseManager:
             "applicable_ai_model_ids": ["gpt-4o-mini"],
             "applicable_user_name": user.get("username"),
             "window_duration_mins": 60,
-            "max_tokens_within_window": 100,
+            "max_tokens_within_window": 100000,
             "type": "ui-access",
             "createdAt": datetime.datetime.utcnow(),
             "updatedAt": datetime.datetime.utcnow()
@@ -123,10 +123,15 @@ class DatabaseManager:
     
 
     # request_usage_log
-    def insert_request_usage_log(self, log: RequestUsageLog) -> bool:
+    def insert_request_usage_log(self, log: RequestUsageLog):
         log["createdAt"] = datetime.datetime.utcnow()
         log["updatedAt"] = datetime.datetime.utcnow()
         return self.db.request_usage_logs.insert_one(log)
+    
+    def update_request_usage_log(self, log_id: str, update_fields: dict) -> bool:
+        update_fields["updatedAt"] = datetime.datetime.utcnow()
+        result = self.db.request_usage_logs.update_one({"_id": log_id}, {"$set": update_fields})
+        return result.modified_count > 0
     
     def list_request_usage_logs(self) -> list[RequestUsageLog]:
         return list(self.db.request_usage_logs.find({}))
@@ -136,14 +141,32 @@ class DatabaseManager:
     
     
     # token_bucket
-    def insert_token_bucket(self, token_bucket: TokenBucket) -> bool:
+    def insert_token_bucket(self, token_bucket: TokenBucket):
         token_bucket["createdAt"] = datetime.datetime.utcnow()
         token_bucket["updatedAt"] = datetime.datetime.utcnow()
         return self.db.token_buckets.insert_one(token_bucket)
+    def update_token_bucket(self, token_bucket_id: str, token_bucket: TokenBucket):
+        token_bucket["updatedAt"] = datetime.datetime.utcnow()
+        return self.db.token_buckets.update_one({"_id": token_bucket_id}, {"$set": token_bucket})
     def list_token_buckets(self) -> list[TokenBucket]:
         return list(self.db.token_buckets.find({}))
     def list_token_buckets_for_user(self, user_name: str) -> list[TokenBucket]:
         return list(self.db.token_buckets.find({"applicable_user_name": user_name}))
+    def get_token_bucket_for_user_and_model(self, user_name: str, model_id: str) -> TokenBucket:
+        """
+        Retrieve the token bucket for a specific user and AI model.
+
+        Args:
+            user_name (str): The username of the user.
+            model_id (str): The ID of the AI model.
+
+        Returns:
+            TokenBucket: The token bucket associated with the user and model, or None if not found.
+        """
+        return self.db.token_buckets.find_one({
+            "applicable_user_name": user_name,
+            "applicable_ai_model_ids": model_id
+        })
     def get_token_bucket(self, token_bucket_id: str) -> TokenBucket:
         return self.db.token_buckets.find_one({"_id": token_bucket_id})
 

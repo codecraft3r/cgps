@@ -60,6 +60,14 @@ class VerifyToken:
     
         return payload
     
+def check_scope(payload: str, required_scopes: list[str]):
+    """Checks if the token has the required scopes, assuming the token has already been decoded and is valid"""
+    token_scopes = payload.get("scope", "").split()
+    for required_scope in required_scopes:
+        if required_scope not in token_scopes:
+            print(f"Request lacks required scope {required_scope}")
+            raise UnauthorizedException(f"Not authorized.")
+        
 def __init__(self):
         self.config = get_settings()
 

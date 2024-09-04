@@ -7,6 +7,8 @@ class Settings(BaseSettings):
     auth0_api_audience: str
     auth0_issuer: str
     auth0_algorithms: str
+    anthropic_api_key: str
+    openai_api_key: str
     mongo_uri: str
 
     class Config:
