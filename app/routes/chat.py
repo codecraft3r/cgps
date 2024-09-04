@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Request, HTTPException, Security
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from app.utils import VerifyToken
 from app.config import get_settings
 from app.mongo import db_manager
@@ -7,6 +7,7 @@ from typing import TypedDict, Optional, Union, List
 import tiktoken
 from openai import OpenAI
 import json
+import uuid
 import httpx
 import datetime
 
@@ -44,13 +45,14 @@ class FunctionMessage(TypedDict):
 Message = Union[SystemMessage, UserMessage, AssistantMessage, ToolMessage, FunctionMessage]
 
 
-@chat_api_router.post("/chat")
+@chat_api_router.post("/chat/completions")
 async def chat_endpoint(request: Request, auth_result: str = Security(auth.verify)):
 
     body = await request.json()
-    model_id = body.get("model_id")
+    model_id = body.get("model")
     user_name = body.get("username")
-    chat_history: list[Message] = body.get("input")
+    chat_history: list[Message] = body.get("messages")
+    stream = body.get("stream", False)  # Default to streaming if not specified
 
     if not model_id or not chat_history or not user_name:
         raise HTTPException(status_code=400, detail="Model ID, input text, and username are required")
@@ -87,13 +89,23 @@ async def chat_endpoint(request: Request, auth_result: str = Security(auth.verif
         )
         response = client.chat.completions.create(
             model=model_id,
-            stream=True,
+            stream=stream,
             messages=chat_history,
             max_tokens=max_tokens,
             temperature=0.7,
         )
-        return StreamingResponse(stream_openai_response(response, encoding=encoding, log_id=log_id), media_type="application/json")
+        if stream:
+            headers = {
+                   "Cache-Control": "no-cache",
+                   "Connection": "keep-alive",
+                   "Transfer-Encoding": "chunked",
+                   "Content-Type": "text/event-stream"
+            }
+            return StreamingResponse(stream_openai_response(response, encoding=encoding, log_id=log_id), media_type="text/event-stream", headers=headers)
+        else:
+            return JSONResponse(content=json.dumps(response.to_dict()))
     elif ai_provider == "Anthropic":
+        # Format the input messages for the Anthropic API
         anthropic_formatted_messages = chat_history[1:]
 
         def get_media_type_from_data_url(data_url):
@@ -121,6 +133,7 @@ async def chat_endpoint(request: Request, auth_result: str = Security(auth.verif
                 else:
                     formatted_content.append(content)
             message["content"] = formatted_content
+        # Call the Anthropic API
         client = httpx.AsyncClient()
         anthropic_api_key = get_settings().anthropic_api_key
         headers = {
@@ -132,7 +145,7 @@ async def chat_endpoint(request: Request, auth_result: str = Security(auth.verif
             "model": model_id,
             "max_tokens": max_tokens,
             "messages": chat_history,
-            "stream": True,
+            "stream": stream,
         }
         response = await client.post(
             "https://api.anthropic.com/v1/messages",
@@ -140,9 +153,20 @@ async def chat_endpoint(request: Request, auth_result: str = Security(auth.verif
             json=payload
         )
         response.raise_for_status()
-        return StreamingResponse(stream_anthropic_response(response, encoding=encoding, model_id=model_id, log_id=log_id), media_type="application/json")
+        if stream:
+            headers = {
+                   "Cache-Control": "no-cache",
+                   "Connection": "keep-alive",
+                   "Transfer-Encoding": "chunked",
+                   "Content-Type": "text/event-stream"
+            }
+            return StreamingResponse(stream_anthropic_response(response, encoding=encoding, model_id=model_id, log_id=log_id), media_type="text/event-stream", headers=headers)
+        else:
+            return JSONResponse(response.json())
     else:
         raise HTTPException(status_code=400, detail="Unsupported model provider")
+    
+
 
 def stream_openai_response(response, encoding, log_id):
     output_tokens = 0
@@ -155,18 +179,27 @@ def stream_openai_response(response, encoding, log_id):
 
     for chunk in response:
         count_tokens(chunk.choices)
-        yield json.dumps(chunk.json())
+        yield f"data: {chunk.json()}\n\n"
 
     # Update log with output tokens and mark as completed
     db_manager.update_request_usage_log(log_id, {
         "tokens_output": output_tokens,
         "request_completed": True
     })
+    yield "data: [DONE]\n\n"
+
+def generate_random_id():
+    return "chatcmpl-" + str(uuid.uuid4())
+
+def generate_random_system_fingerprint():
+    return "fp_f33667828e"
 
 async def stream_anthropic_response(response, encoding, model_id, log_id):
     output_tokens = 0
     partial_json = ""
+    completion_id = generate_random_id()
 
+    # Parse the response stream, convert to the OpenAI format, and yield each chunk
     async for line in response.aiter_lines():
         if line:
             line = line.strip()
@@ -188,11 +221,11 @@ async def stream_anthropic_response(response, encoding, model_id, log_id):
                     # Count tokens for the current chunk
                     output_tokens += len(encoding.encode(data["delta"]["text"]))
                     openai_response = {
-                        "id": "chatcmpl-A3cHlLQjS28eMLxhcee4WWrMVpBUv",  # Example ID, replace with actual ID if available
+                        "id": completion_id,
                         "choices": [
                             {
                                 "delta": {
-                                    "content": partial_json,
+                                    "content": data["delta"]["text"],
                                     "function_call": None,
                                     "refusal": None,
                                     "role": None,
@@ -207,19 +240,18 @@ async def stream_anthropic_response(response, encoding, model_id, log_id):
                         "model": model_id,
                         "object": "chat.completion.chunk",
                         "service_tier": None,
-                        "system_fingerprint": "fp_f33667828e",
+                        "system_fingerprint": generate_random_system_fingerprint(),
                         "usage": None
                     }
-                    yield json.dumps(openai_response)
+                    yield f"data: {json.dumps(openai_response)}\n\n"
                 elif event == "content_block_stop" and data["type"] == "content_block_stop":
                     # Parse the accumulated partial JSON
-                    final_json = partial_json
                     openai_response = {
-                        "id": "chatcmpl-A3cHlLQjS28eMLxhcee4WWrMVpBUv",  # Example ID, replace with actual ID if available
+                        "id": completion_id,
                         "choices": [
                             {
                                 "delta": {
-                                    "content": final_json,
+                                    "content": partial_json,
                                     "function_call": None,
                                     "refusal": None,
                                     "role": None,
@@ -234,10 +266,10 @@ async def stream_anthropic_response(response, encoding, model_id, log_id):
                         "model": model_id,
                         "object": "chat.completion.chunk",
                         "service_tier": None,
-                        "system_fingerprint": "fp_f33667828e",
+                        "system_fingerprint": generate_random_system_fingerprint(),
                         "usage": None
                     }
-                    yield json.dumps(openai_response)
+                    yield f"data: {json.dumps(openai_response)}\n\n"
                     partial_json = ""  # Reset for the next content block
                 else:
                     continue  # Skip unknown event types
@@ -247,6 +279,7 @@ async def stream_anthropic_response(response, encoding, model_id, log_id):
         "tokens_output": output_tokens,
         "request_completed": True
     })
+    yield "data: [DONE]\n\n"
 
 def limit_usage(user_name: str, model_id: str, tokens_requested: int) -> bool:
     """
@@ -283,5 +316,3 @@ def limit_usage(user_name: str, model_id: str, tokens_requested: int) -> bool:
         return True
     
     return False
-
-
