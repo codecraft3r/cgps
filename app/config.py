@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     anthropic_api_key: str
     openai_api_key: str
     mongo_uri: str
+    unkey_api_id: str
+    unkey_api_key: str
 
     class Config:
         env_file = ".env"

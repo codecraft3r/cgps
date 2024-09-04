@@ -107,16 +107,23 @@ class DatabaseManager:
     def list_ai_models(self) -> list[AiModel]:
         return list(self.db.models.find({}))
     
-    def list_ai_models_for_user(self, user_name: str) -> list[AiModel]:
+    def list_ai_models_for_user(self, user_name: str, access_type: Literal["ui-access", "api-access"] = "ui-access") -> list[AiModel]:
         # Find all token buckets associated with the user
-        token_buckets = list(self.db.token_buckets.find({"applicable_user_name": user_name, "type": "ui-access"}))
-        print(token_buckets)
+        token_buckets = list(self.db.token_buckets.find({"applicable_user_name": user_name, "type": access_type}))
         # Extract all applicable AI model IDs from the token buckets
         model_ids = set()
         for bucket in token_buckets:
             model_ids.update(bucket.get("applicable_ai_model_ids", []))
 
-        return model_ids
+        # Find all AI models associated with the model IDs
+        models = []
+        for id in model_ids:
+            model = self.get_ai_model_by_provider_id(id)
+            if model:
+                models.append(model)
+        
+        return models
+                
     
     def get_ai_model_by_provider_id(self, ai_model_id: str) -> AiModel:
         return self.db.ai_models.find_one({"provider_id": ai_model_id})
@@ -152,7 +159,7 @@ class DatabaseManager:
         return list(self.db.token_buckets.find({}))
     def list_token_buckets_for_user(self, user_name: str) -> list[TokenBucket]:
         return list(self.db.token_buckets.find({"applicable_user_name": user_name}))
-    def get_token_bucket_for_user_and_model(self, user_name: str, model_id: str) -> TokenBucket:
+    def get_token_bucket_for_user_and_model(self, user_name: str, model_id: str, type: Literal["api-access", "ui-access"]) -> TokenBucket:
         """
         Retrieve the token bucket for a specific user and AI model.
 
@@ -165,7 +172,8 @@ class DatabaseManager:
         """
         return self.db.token_buckets.find_one({
             "applicable_user_name": user_name,
-            "applicable_ai_model_ids": model_id
+            "applicable_ai_model_ids": model_id,
+            "type": type
         })
     def get_token_bucket(self, token_bucket_id: str) -> TokenBucket:
         return self.db.token_buckets.find_one({"_id": token_bucket_id})

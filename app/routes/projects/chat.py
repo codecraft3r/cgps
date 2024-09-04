@@ -1,9 +1,8 @@
-from fastapi import APIRouter, Request, HTTPException, Security
+from fastapi import APIRouter, Request, HTTPException, Header
 from fastapi.responses import StreamingResponse, JSONResponse
-from app.utils import VerifyToken
 from app.config import get_settings
 from app.mongo import db_manager
-from typing import TypedDict, Optional, Union, List
+from typing import TypedDict, Optional, Union, List, Any
 import tiktoken
 from openai import OpenAI
 import json
@@ -11,8 +10,7 @@ import uuid
 import httpx
 import datetime
 
-chat_api_router = APIRouter()
-auth = VerifyToken()
+project_chat_api_router = APIRouter()
 
 class SystemMessage(TypedDict):
     role: str
@@ -45,12 +43,11 @@ class FunctionMessage(TypedDict):
 Message = Union[SystemMessage, UserMessage, AssistantMessage, ToolMessage, FunctionMessage]
 
 
-@chat_api_router.post("/chat/completions")
-async def chat_endpoint(request: Request, auth_result: str = Security(auth.verify)):
-
+@project_chat_api_router.post("/chat/completions")
+async def chat_endpoint(request: Request):
+    user_name = request.state.owner_id
     body = await request.json()
     model_id = body.get("model")
-    user_name = body.get("username")
     chat_history: list[Message] = body.get("messages")
     stream = body.get("stream", False)  # Default to streaming if not specified
 
@@ -61,7 +58,7 @@ async def chat_endpoint(request: Request, auth_result: str = Security(auth.verif
     encoding = tiktoken.get_encoding("cl100k_base")
     chat_history_text = " ".join([message["content"] for message in chat_history])
     input_tokens = len(encoding.encode(chat_history_text))
-    token_bucket = db_manager.get_token_bucket_for_user_and_model(user_name, model_id, "ui-access")
+    token_bucket = db_manager.get_token_bucket_for_user_and_model(user_name, model_id, "api-access")
     if not token_bucket:
         raise HTTPException(status_code=404, detail="Token bucket not found for user and model")
 
@@ -294,7 +291,7 @@ def limit_usage(user_name: str, model_id: str, tokens_requested: int) -> bool:
         bool: True if the token limit is exceeded, False otherwise.
     """
     # Fetch the token bucket associated with the user and model
-    token_bucket = db_manager.get_token_bucket_for_user_and_model(user_name, model_id, type="ui-access")
+    token_bucket = db_manager.get_token_bucket_for_user_and_model(user_name, model_id, type="api-access")
     
     if not token_bucket:
         return False  # No token bucket found, no limit to enforce

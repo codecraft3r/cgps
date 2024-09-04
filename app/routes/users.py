@@ -29,7 +29,7 @@ def delete_user(user_name: str, auth_result: str = Security(auth.verify)):
 def list_token_buckets_for_user(user_name: str, auth_result: str = Security(auth.verify)):
     return db_manager.list_token_buckets_for_user(user_name)
 
-@user_api_router.get("/uses/{user_name}/token_buckets/{token_bucket_id}")
+@user_api_router.get("/user/{user_name}/token_buckets/{token_bucket_id}")
 def get_token_bucket(user_name: str, token_bucket_id: str, auth_result: str = Security(auth.verify)):
     return db_manager.get_token_bucket(token_bucket_id)
 
@@ -38,10 +38,6 @@ def create_token_bucket(user_name: str, auth_result: str = Security(auth.verify)
     check_scope(auth_result, ["admin:user:assign_models"])
     bucket = db_manager.insert_token_bucket(body)
     return {"message": "Token bucket created", "body": bucket}
-
-@user_api_router.get("/user/{user_name}/models")
-def list_ai_models_for_user(user_name: str, auth_result: str = Security(auth.verify)):
-    return db_manager.list_ai_models_for_user(user_name)
 
 @user_api_router.get("/users")
 def list_users(auth_result: str = Security(auth.verify)):
