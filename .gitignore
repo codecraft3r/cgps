@@ -1,5 +1,5 @@
 .env
 scratch.sh
 test-stream.py
-openai_compliance_test.py
+openai-compliance-test.py
 venv/*
