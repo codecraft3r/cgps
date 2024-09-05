@@ -3,7 +3,7 @@ from fastapi import FastAPI, APIRouter
 from app.utils import VerifyToken
 from app.mongo import initialize_db
 
-from app.middleware import CheckKeyScopeMiddleware, UnkeyMiddleware
+from app.middleware import Auth0ScopedMiddleware, UnkeyMiddleware
 
 from app.routes.users import user_api_router
 from app.routes.models import models_api_router
@@ -14,7 +14,7 @@ from app.config import get_settings
 
 core_app = FastAPI(root_path="/v1", docs_url="/docs", redoc_url="/redoc")
 core_app.add_middleware(
-    CheckKeyScopeMiddleware,
+    Auth0ScopedMiddleware,
     required_scopes=["key_type:core"]
 )
 

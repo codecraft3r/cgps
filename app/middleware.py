@@ -7,7 +7,7 @@ from app.utils import VerifyToken, check_scope, UnauthorizedException, Unauthent
 from typing import Any, Optional
 import unkey
 
-class CheckKeyScopeMiddleware(BaseHTTPMiddleware):
+class Auth0ScopedMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, required_scopes: list[str]):
         super().__init__(app)
         self.required_scopes = required_scopes
