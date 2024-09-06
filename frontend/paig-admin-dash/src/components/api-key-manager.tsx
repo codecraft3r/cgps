@@ -50,7 +50,7 @@ export function ApiKeyManager({users}: {users: User[]}) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-full">
-            {users.map((user) => (
+            {Array.isArray(users) && users.map((user) => (
               <DropdownMenuItem key={user._id} onSelect={() => handleUserSelect(user)}>
                 <Check
                   className={`mr-2 h-4 w-4 ${

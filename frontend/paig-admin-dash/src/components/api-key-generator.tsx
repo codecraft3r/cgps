@@ -62,7 +62,7 @@ export function ApiKeyGenerator({ users = [] }: ApiKeyGeneratorProps) {
             <SelectValue placeholder="Select a user" />
           </SelectTrigger>
           <SelectContent>
-            {users.map((user) => (
+            {Array.isArray(users) && users.map((user) => (
               <SelectItem key={user._id} value={user._id}>
                 {user.username}
               </SelectItem>
