@@ -1,7 +1,6 @@
 let at: string | undefined;
 let att: number | undefined;
 
-const API_URL = process.env.M2M_API_URL ?? ''
 const AUTH0_CLIENT_ID = process.env.M2M_AUTH0_CLIENT_ID ?? ''
 const AUTH0_CLIENT_SECRET = process.env.M2M_AUTH0_CLIENT_SECRET ?? ''
 const AUTH0_AUDIENCE = process.env.M2M_AUTH0_AUDIENCE ?? ''
