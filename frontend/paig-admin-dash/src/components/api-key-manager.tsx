@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Check, ChevronsUpDown, Key, Trash2 } from "lucide-react"
+import { Check, ChevronsUpDown, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { getIssuedKeys, deleteKey, User } from "@/app/actions"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
