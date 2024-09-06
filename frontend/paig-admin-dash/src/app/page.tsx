@@ -1,24 +1,42 @@
+import { AdminDashboard } from '@/components/admin-dashboard';
 import Profile from '../components/Profile';
+import { getSession } from '@auth0/nextjs-auth0';
+import { redirect } from 'next/navigation';
+import { ApiKeyGenerator } from '@/components/api-key-generator';
+import { getUsers } from './actions';
+import { ApiKeyManager } from '@/components/api-key-manager';
 
-export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <div className="flex flex-col items-center justify-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to the Admin Dashboard</h1>
-        <a
-          href="/api/auth/login"
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-700"
-        >
-          Login
-        </a>
-        <a
-          href="/api/auth/logout"
-          className="px-4 py-2 mt-4 bg-red-500 text-white rounded hover:bg-red-700"
-        >
-          Logout
-        </a>
-        <Profile />
+
+export default async function Home() {
+  const session = await getSession();
+  const users = await getUsers();
+  if (session) {
+    return (
+      <div className="min-h-screen p-8 pb-20 sm:p-20 font-[family-name:var(--font-geist-sans)] bg-zinc-900 text-white">
+        <div className="max-w-7xl mx-auto">
+          <Profile />
+          <div className="mt-8">
+            <AdminDashboard />
+          </div>
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+            <ApiKeyGenerator users={users} />
+            <ApiKeyManager users={users} />
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  } else {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-8 pb-20 sm:p-20 font-[family-name:var(--font-geist-sans)] bg-gray-100">
+        <div className="text-center">
+          <a
+            href="/api/auth/login"
+            className="px-6 py-3 mt-4 bg-blue-500 text-white rounded-lg shadow-lg hover:bg-blue-700 transition duration-300"
+          >
+            Login
+          </a>
+        </div>
+      </div>
+    );
+  }
 }

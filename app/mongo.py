@@ -3,6 +3,7 @@ from typing import Literal, TypedDict, Optional
 
 from pymongo import MongoClient
 from app.config import get_settings
+from bson import ObjectId
 
 client = MongoClient(get_settings().mongo_uri)
 db = client.get_database('bongodb').get_collection('bongodb')
@@ -102,10 +103,10 @@ class DatabaseManager:
     def insert_ai_model(self, model: AiModel) -> bool:
         model["createdAt"] = datetime.datetime.utcnow()
         model["updatedAt"] = datetime.datetime.utcnow()
-        return self.db.models.insert_one(model)
+        return self.db.ai_models.insert_one(model)
     
     def list_ai_models(self) -> list[AiModel]:
-        return list(self.db.models.find({}))
+        return list(self.db.ai_models.find({}))
     
     def list_ai_models_for_user(self, user_name: str, access_type: Literal["ui-access", "api-access"] = "ui-access") -> list[AiModel]:
         # Find all token buckets associated with the user
@@ -123,12 +124,13 @@ class DatabaseManager:
                 models.append(model)
         
         return models
-                
     
     def get_ai_model_by_provider_id(self, ai_model_id: str) -> AiModel:
         return self.db.ai_models.find_one({"provider_id": ai_model_id})
     
-
+    def delete_ai_model(self, ai_model_id: str) -> bool:
+        return self.db.ai_models.delete_one({"provider_id": ai_model_id})
+    
     # request_usage_log
     def insert_request_usage_log(self, log: RequestUsageLog):
         log["createdAt"] = datetime.datetime.utcnow()
@@ -154,7 +156,11 @@ class DatabaseManager:
         return self.db.token_buckets.insert_one(token_bucket)
     def update_token_bucket(self, token_bucket_id: str, token_bucket: TokenBucket):
         token_bucket["updatedAt"] = datetime.datetime.utcnow()
-        return self.db.token_buckets.update_one({"_id": token_bucket_id}, {"$set": token_bucket})
+
+        if isinstance(token_bucket_id, str):
+            token_bucket_id = ObjectId(token_bucket_id)
+            return self.db.token_buckets.update_one({"_id": token_bucket_id}, {"$set": token_bucket})
+    
     def list_token_buckets(self) -> list[TokenBucket]:
         return list(self.db.token_buckets.find({}))
     def list_token_buckets_for_user(self, user_name: str) -> list[TokenBucket]:

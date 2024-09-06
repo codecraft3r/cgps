@@ -8,15 +8,10 @@ from app.middleware import Auth0ScopedMiddleware, UnkeyMiddleware
 from app.routes.users import user_api_router
 from app.routes.models import models_api_router
 from app.routes.chat import chat_api_router
+from app.routes.audit import audit_api_router
 from app.routes.projects.chat import project_chat_api_router
 from app.routes.projects.models import models_api_router as project_models_api_router
 from app.config import get_settings
-
-core_app = FastAPI(root_path="/v1", docs_url="/docs", redoc_url="/redoc")
-core_app.add_middleware(
-    Auth0ScopedMiddleware,
-    required_scopes=["key_type:core"]
-)
 
 projects_app = FastAPI(root_path="/projects/v1", docs_url="/docs", redoc_url="/redoc")
 projects_app.add_middleware(
@@ -27,11 +22,20 @@ projects_app.add_middleware(
 projects_app.include_router(project_chat_api_router)
 projects_app.include_router(project_models_api_router)
 
-auth = VerifyToken()
+auth = VerifyToken() #
+
+
+core_app = FastAPI(root_path="/v1", docs_url="/docs", redoc_url="/redoc")
+core_app.add_middleware(
+    Auth0ScopedMiddleware,
+    required_scopes=["key_type:core"]
+)
 
 core_app.include_router(chat_api_router)
 core_app.include_router(user_api_router)
 core_app.include_router(models_api_router)
+core_app.include_router(audit_api_router)
+
 
 @projects_app.get("/helloworld")
 def hello_world():
