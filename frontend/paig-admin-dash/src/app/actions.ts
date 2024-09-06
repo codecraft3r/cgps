@@ -1,13 +1,9 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { cache } from 'react'
+import { getAuthToken } from '@/lib/authToken'
 import { unkey, uk_api_id } from '@/lib/unkey'
 const API_URL = process.env.M2M_API_URL ?? ''
-const AUTH0_CLIENT_ID = process.env.M2M_AUTH0_CLIENT_ID ?? ''
-const AUTH0_CLIENT_SECRET = process.env.M2M_AUTH0_CLIENT_SECRET ?? ''
-const AUTH0_AUDIENCE = process.env.M2M_AUTH0_AUDIENCE ?? ''
-const AUTH0_TOKEN_URL = process.env.M2M_AUTH0_TOKEN_URL ?? ''
 
 export interface User {
   _id: string
@@ -47,36 +43,6 @@ declare global {
   let authToken: string | undefined;
   let authTokenTime: number | undefined;
 }
-const CACHE_EXPIRY_MS = 3600000 * 12; // 12 hours
-
-let authToken: string | undefined;
-let authTokenTime: number | undefined;
-
-const getAuthToken = cache(async () => {
-  const now = Date.now();
-
-  if (authToken && authTokenTime && now - authTokenTime < CACHE_EXPIRY_MS) {
-    return authToken;
-  }
-
-  const response = await fetch(AUTH0_TOKEN_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      client_id: AUTH0_CLIENT_ID,
-      client_secret: AUTH0_CLIENT_SECRET,
-      audience: AUTH0_AUDIENCE,
-      grant_type: 'client_credentials'
-    })
-  });
-  const data = await response.json();
-  const token = data.access_token;
-
-  authToken = token;
-  authTokenTime = now;
-
-  return token;
-});
 
 export async function getUsers(): Promise<User[]> {
   const token = await getAuthToken()
@@ -119,7 +85,7 @@ export async function getTokenBuckets(): Promise<TokenBucket[]> {
 
 export async function createUser(formData: FormData): Promise<User> {
   const token = await getAuthToken()
-  const response = await fetch(`${API_URL}/users`, {
+  const response = await fetch(`${API_URL}/user`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
