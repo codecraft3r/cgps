@@ -9,7 +9,6 @@ const AUTH0_CLIENT_SECRET = process.env.M2M_AUTH0_CLIENT_SECRET ?? ''
 const AUTH0_AUDIENCE = process.env.M2M_AUTH0_AUDIENCE ?? ''
 const AUTH0_TOKEN_URL = process.env.M2M_AUTH0_TOKEN_URL ?? ''
 
-
 export interface User {
   _id: string
   username: string
@@ -45,18 +44,19 @@ export interface RequestUsageLog {
   updatedAt: string | null
 }
 declare global {
-  var authToken: string | undefined;
-  var authTokenTime: number | undefined;
+  let authToken: string | undefined;
+  let authTokenTime: number | undefined;
 }
 const CACHE_EXPIRY_MS = 3600000 * 12; // 12 hours
 
+let authToken: string | undefined;
+let authTokenTime: number | undefined;
+
 const getAuthToken = cache(async () => {
   const now = Date.now();
-  const cachedToken = globalThis.authToken;
-  const cachedTime = globalThis.authTokenTime;
 
-  if (cachedToken && cachedTime && now - cachedTime < CACHE_EXPIRY_MS) {
-    return cachedToken;
+  if (authToken && authTokenTime && now - authTokenTime < CACHE_EXPIRY_MS) {
+    return authToken;
   }
 
   const response = await fetch(AUTH0_TOKEN_URL, {
@@ -72,8 +72,8 @@ const getAuthToken = cache(async () => {
   const data = await response.json();
   const token = data.access_token;
 
-  globalThis.authToken = token;
-  globalThis.authTokenTime = now;
+  authToken = token;
+  authTokenTime = now;
 
   return token;
 });

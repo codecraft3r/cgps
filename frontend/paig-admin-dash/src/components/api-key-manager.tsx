@@ -22,6 +22,7 @@ import {
 
 export function ApiKeyManager({users}: {users: User[]}) {
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [apiKeys, setApiKeys] = useState<any[]>([])
 
   const handleUserSelect = async (user: User) => {
@@ -32,14 +33,6 @@ export function ApiKeyManager({users}: {users: User[]}) {
   const handleDeleteKey = async (keyId: string) => {
     deleteKey(keyId)
     setApiKeys(apiKeys.filter((key) => key.id !== keyId))
-  }
-
-  const handleToggleKey = (keyId: string) => {
-    setApiKeys(
-      apiKeys.map((key) =>
-        key.id === keyId ? { ...key, isEnabled: !key.isEnabled } : key
-      )
-    )
   }
 
   return (
