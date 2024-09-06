@@ -1,3 +1,4 @@
+"use server"
 let at: string | undefined;
 let att: number | undefined;
 
