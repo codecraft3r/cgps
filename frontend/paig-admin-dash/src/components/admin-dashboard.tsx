@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { createUser, updateUser, deleteUser, createModel, updateModel, deleteModel, createTokenBucket, updateTokenBucket, deleteTokenBucket, getUsageLogs, getUsers, getModels, getTokenBuckets } from "../app/actions"
-import { User, AiModel, TokenBucket, RequestUsageLog } from "../app/actions"
+import { User, AiModel, TokenBucket, RequestUsageLog } from "@/app/actions"
 import { useRouter } from "next/navigation"
 
 // Enum for AI providers
