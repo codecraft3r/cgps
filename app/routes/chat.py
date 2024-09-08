@@ -50,7 +50,7 @@ async def chat_endpoint(request: Request, auth_result: str = Security(auth.verif
 
     body = await request.json()
     model_id = body.get("model")
-    user_name = body.get("username")
+    user_name = request.headers.get("username")
     chat_history: list[Message] = body.get("messages")
     stream = body.get("stream", False)  # Default to streaming if not specified
 
